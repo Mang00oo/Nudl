@@ -3,6 +3,8 @@ use std::env;
 use std::fs;
 mod translator;
 mod defaults;
+mod parser;
+mod lexer;
 
 fn main() {
     let action = std::env::args().nth(1).expect("No action arguement given.");
@@ -19,9 +21,9 @@ fn main() {
         current_dir.push(&name);
         fs::create_dir(format!("{}/{}", &name, "src")).expect("Could not create project: failed to init directory");
         fs::create_dir(format!("{}/{}", &name, "maps")).expect("Could not create project: failed to init directory");
-        let flavorFile = fs::write(format!("{}/flavor.json", &name), defaults::flavorFileDefault());
-        let mapFile = fs::write(format!("{}/maps/std.json", &name), defaults::stdMapDefault());
-        let mainFile = fs::write(format!("{}/src/main.nudl", &name), defaults::mainScriptDefault());
+        let flavorFile = fs::write(format!("{}/flavor.json", &name), defaults::flavor_file_default());
+        let mapFile = fs::write(format!("{}/maps/std.json", &name), defaults::std_map_default());
+        let mainFile = fs::write(format!("{}/src/main.nudl", &name), defaults::main_script_default());
         let rustOutput = Command::new("cargo")
             .current_dir(&current_dir)
             .arg("new")
