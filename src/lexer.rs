@@ -41,7 +41,7 @@ pub enum Token {
 
 }
 
-pub fn tokenize(source: &String, flavor: Flavor) {
+pub fn tokenize(source: &String, flavor: Flavor) -> Vec<Token> {
     let mut result: Vec<Token> = Vec::new();
 
     let mut _current_token = String::new();
@@ -63,6 +63,18 @@ pub fn tokenize(source: &String, flavor: Flavor) {
             chars.next_back();
             result.push(Token::StringLiteral(chars.as_str().to_owned()));
             println!("String literal");
+        } else if token.as_str() == flavor.assignment_op {
+            result.push(Token::Assign);
+            println!("Assignment");
+        } else if token.as_str() == flavor.true_literal {
+            result.push(Token::True);
+            println!("True");
+        } else if token.as_str() == flavor.false_literal {
+            result.push(Token::False);
+            println!("False");
+        } else if let Ok(number) = token.as_str().parse::<f64>() {
+            result.push(Token::Number(number));
+            println!("Number");
         } else {
             if token.as_str().chars().count() > 0 {
                 result.push(Token::Identifier(token));
@@ -77,6 +89,13 @@ pub fn tokenize(source: &String, flavor: Flavor) {
             eval_current(&mut _current_token, &mut result);
             continue;
         }
+        if c == flavor.string_literal.chars().next().expect("Flavor error") {
+            is_in_literal = !is_in_literal;
+        }
+        if is_in_literal {
+            _current_token.push(c);
+            continue
+        }
         if c == flavor.line_end.chars().next().expect("Flavor error") {
             eval_current(&mut _current_token, &mut result);
             result.push(Token::EndStatement);
@@ -89,7 +108,13 @@ pub fn tokenize(source: &String, flavor: Flavor) {
             println!("Dot");
             continue
         }
-        if c == flavor.assignment_op.chars().next().expect("Flavor error") {
+        if c == flavor.comma.chars().next().expect("Flavor error") {
+            eval_current(&mut _current_token, &mut result);
+            result.push(Token::Comma);
+            println!("Comma");
+            continue
+        }
+        if c == flavor.assignment_op.chars().next().expect("Flavor error") && flavor.assignment_op.chars().count() == 1 {
             eval_current(&mut _current_token, &mut result);
             result.push(Token::Assign);
             println!("Assignment");
@@ -107,9 +132,19 @@ pub fn tokenize(source: &String, flavor: Flavor) {
             println!("Right Parentheses");
             continue
         }
-        if c == flavor.string_literal.chars().next().expect("Flavor error") {
-            is_in_literal = !is_in_literal;
+        if c == flavor.block_def.chars().next().expect("Flavor error") {
+            eval_current(&mut _current_token, &mut result);
+            result.push(Token::LBlock);
+            println!("Left Block");
+            continue
+        }
+        if c == flavor.block_def.chars().last().expect("Flavor error") {
+            eval_current(&mut _current_token, &mut result);
+            result.push(Token::RBlock);
+            println!("Right Block");
+            continue
         }
         _current_token.push(c);
     }
+    return result;
 }

@@ -7,8 +7,11 @@ pub fn flavor_file_default() -> &'static str {
     "comments": "#",
     "line_end": ";",
     "dot": ".",
+    "comma": ",",
     "assignment_op": "=",
     "string_literal": "'",
+    "true_literal": "true",
+    "false_literal": "false",
 
     "add_op": "+",
     "sub_op": "-",

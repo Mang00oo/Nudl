@@ -10,7 +10,16 @@ fn main() {
     let action = std::env::args().nth(1).expect("No action arguement given.");
 
     if action == "run" {
-        println!("running some program");
+        println!("Translating project to Rust...");
+        translator::translate();
+        println!("Translated successfully!");
+        let mut current_dir = env::current_dir().expect("Failed to get current directory").join("translated");
+        let rustOutput = Command::new("cargo")
+            .current_dir(&current_dir)
+            .arg("run")
+            .status()
+            .expect("Couldn't run Rust project.");
+        println!("Ran successfully!");
     } else if action == "create" {
         let name = std::env::args().nth(2).expect("No project name given.");
         println!("Creating new project with name: {:?}...", &name);
@@ -37,7 +46,16 @@ fn main() {
         translator::translate();
         println!("Translated successfully!");
     } else if action == "build" {
-        println!("building some program");
+        println!("Translating project to Rust...");
+        translator::translate();
+        println!("Translated successfully!");
+        let mut current_dir = env::current_dir().expect("Failed to get current directory").join("translated");
+        let rustOutput = Command::new("cargo")
+            .current_dir(&current_dir)
+            .arg("build")
+            .status()
+            .expect("Couldn't build Rust project.");
+        println!("Built successfully!");
     } else if action == "version" {
         println!("Nudl version: 0.1.0-alpha");
     }
