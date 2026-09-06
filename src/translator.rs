@@ -68,34 +68,64 @@ fn args_to_string(statements: Vec<parser::Statement>) -> String {
     }
     return new;
 }
+fn get_indented_string(numIndents: i32) -> String {
+    let mut indented = String::new();
+    for b in [0..numIndents] {
+        indented.push_str("\t");
+    }
+    return indented;
+}
+
+fn generate_translated(tree: &Vec<parser::ASTNode>, startIndex: usize, block_depth: i32) -> (String, usize) {
+    let mut translated = String::new();
+
+    let mut i = startIndex;
+    while i < tree.len() {
+        translated.push_str(&get_indented_string(block_depth));
+        match &tree[i] {
+            parser::ASTNode::FunctionCall { name, args } => {
+                if (name == "print") {
+                    translated.push_str(&format!("println!({});", args_to_string(args.to_owned())));
+                } else {
+                    translated.push_str(&format!("{}({});", name, args_to_string(args.to_owned())));
+                }
+            }
+            parser::ASTNode::VariableDeclaration { name, value } => {
+                translated.push_str(&format!("let mut {} = {};", name, statement_to_string(value.to_owned())));
+            },
+            parser::ASTNode::VariableAssignment { name, value } => {
+                translated.push_str(&format!("{} = {};", name, statement_to_string(value.to_owned())));
+            },
+            parser::ASTNode::FunctionDef { name, args, children } => {
+                translated.push_str(&format!("fn {}({}) {{ \n", name.to_owned(), args_to_string(args.to_owned())));
+                let t = &generate_translated(children, 0, block_depth+1).0;
+                translated.push_str(&get_indented_string(block_depth));
+                translated.push_str(t);
+                translated.push_str(&get_indented_string(block_depth));
+                translated.push_str("}");
+            },
+            parser::ASTNode::IfStatement { conditions, children } => {
+                translated.push_str(&format!("if {} {{ \n", args_to_string(conditions.to_owned())));
+                let t = &generate_translated(children, 0, block_depth+1).0;
+                translated.push_str(&get_indented_string(block_depth));
+                translated.push_str(t);
+                translated.push_str(&get_indented_string(block_depth));
+                translated.push_str("}");
+            }
+            _ => {}
+        }
+        translated.push_str("\n");
+        i += 1;
+    }
+    return (translated, i);
+}
 
 fn write_rust_file(tree: Vec<parser::ASTNode>) {
     let mut translated = String::new();
 
     translated.push_str("fn main() { \n");
 
-    let mut block_depth = 1;
-
-    for node in tree {
-        for i in [0..block_depth] {
-            translated.push_str("\t");
-        }
-        match node {
-            parser::ASTNode::FunctionCall { name, args } => {
-                if (name == "print") {
-                    translated.push_str(&format!("println!({});", args_to_string(args)));
-                }
-            }
-            parser::ASTNode::VariableDeclaration { name, value } => {
-                translated.push_str(&format!("let mut {} = {};", name, statement_to_string(value)));
-            },
-            parser::ASTNode::VariableAssignment { name, value } => {
-                translated.push_str(&format!("{} = {};", name, statement_to_string(value)));
-            },
-            _ => {}
-        }
-        translated.push_str("\n");
-    }
+    translated.push_str(&generate_translated(&tree, 0, 1).0);
 
     translated.push_str("}");
 
@@ -114,6 +144,6 @@ pub fn translate() {
     println!("Tokenizing...");
     let tokens = lexer::tokenize(&main_file, flavor);
     println!("Parsing...");
-    let tree = parser::generate_tree(tokens);
-    write_rust_file(tree);
+    let tree = parser::generate_tree(&tokens, 0);
+    write_rust_file(tree.0);
 }

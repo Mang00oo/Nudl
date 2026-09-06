@@ -57,6 +57,9 @@ pub fn tokenize(source: &String, flavor: Flavor) -> Vec<Token> {
         } else if token.as_str() == flavor.function_def {
             result.push(Token::Fn);
             println!("Function declaration")
+        } else if token.as_str() == flavor.if_statement {
+            result.push(Token::If);
+            println!("If statement");
         } else if token.as_str().chars().next() == flavor.string_literal.chars().next() && token.as_str().chars().last() == flavor.string_literal.chars().next(){
             let mut chars = token.as_str().chars();
             chars.next();
