@@ -105,10 +105,10 @@ fn generate_translated(tree: &Vec<parser::ASTNode>, block_depth: i32) -> (String
                 translated.push_str(&format!("{} = {};", name, operation_to_string(value.to_owned())));
             },
             parser::ASTNode::FunctionDef { name, args, children } => {
-                translated.push_str(&format!("fn {}({}) {{ \n", name.to_owned(), operation_to_string(args.to_owned())));
+                translated.push_str(&format!("let {} = |{}| {{ \n", name.to_owned(), operation_to_string(args.to_owned())));
                 translated.push_str(&generate_translated(children, block_depth+1).0);
                 translated.push_str(&get_indented_string(block_depth));
-                translated.push_str("}");
+                translated.push_str("};");
             },
             parser::ASTNode::IfStatement { conditions, children } => {
                 translated.push_str(&format!("if {} {{ \n", operation_to_string(conditions.to_owned())));

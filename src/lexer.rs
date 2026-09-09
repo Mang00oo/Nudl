@@ -149,11 +149,6 @@ pub fn tokenize(source: &String, flavor: Flavor) -> Vec<Token> {
             result.push(Token::Divide);
             continue
         }
-        if c == flavor.assignment_op.chars().next().expect("Flavor error") && flavor.assignment_op.chars().count() == 1 {
-            eval_current(&mut _current_token, &mut result);
-            result.push(Token::Assign);
-            continue
-        }
         if c == flavor.parentheses.chars().next().expect("Flavor error") {
             eval_current(&mut _current_token, &mut result);
             result.push(Token::LParen);
