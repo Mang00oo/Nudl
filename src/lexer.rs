@@ -30,6 +30,10 @@ pub enum Token {
     Divide, // /
     Equal, // ==
     NotEqual, // !=
+    Greater,
+    Less,
+    EGreater,
+    ELess,
     EndStatement, // ;
     Comma, // ,
     Dot, // .
@@ -53,35 +57,46 @@ pub fn tokenize(source: &String, flavor: Flavor) -> Vec<Token> {
         
         if token.as_str() == flavor.variable_def {
             result.push(Token::Var);
-            println!("Variable declaration")
         } else if token.as_str() == flavor.function_def {
             result.push(Token::Fn);
-            println!("Function declaration")
         } else if token.as_str() == flavor.if_statement {
             result.push(Token::If);
-            println!("If statement");
         } else if token.as_str().chars().next() == flavor.string_literal.chars().next() && token.as_str().chars().last() == flavor.string_literal.chars().next(){
             let mut chars = token.as_str().chars();
             chars.next();
             chars.next_back();
             result.push(Token::StringLiteral(chars.as_str().to_owned()));
-            println!("String literal");
+        } else if token.as_str() == flavor.add_op {
+            result.push(Token::Plus);
+        } else if token.as_str() == flavor.sub_op {
+            result.push(Token::Minus);
+        } else if token.as_str() == flavor.mult_op {
+            result.push(Token::Multiply);
+        } else if token.as_str() == flavor.div_op {
+            result.push(Token::Divide);
+        } else if token.as_str() == flavor.equal_op {
+            result.push(Token::Equal);
+        } else if token.as_str() == flavor.not_equal_op {
+            result.push(Token::NotEqual);
+        } else if token.as_str() == flavor.greater_op {
+            result.push(Token::Greater);
+        } else if token.as_str() == flavor.eo_greater_op {
+            result.push(Token::EGreater);
+        } else if token.as_str() == flavor.less_op {
+            result.push(Token::Less);
+        } else if token.as_str() == flavor.eo_less_op {
+            result.push(Token::ELess);
         } else if token.as_str() == flavor.assignment_op {
             result.push(Token::Assign);
-            println!("Assignment");
         } else if token.as_str() == flavor.true_literal {
             result.push(Token::True);
-            println!("True");
         } else if token.as_str() == flavor.false_literal {
             result.push(Token::False);
-            println!("False");
         } else if let Ok(number) = token.as_str().parse::<f64>() {
             result.push(Token::Number(number));
-            println!("Number");
         } else {
             if token.as_str().chars().count() > 0 {
                 result.push(Token::Identifier(token));
-                println!("Identifier");
             }
         }
     };
@@ -102,49 +117,61 @@ pub fn tokenize(source: &String, flavor: Flavor) -> Vec<Token> {
         if c == flavor.line_end.chars().next().expect("Flavor error") {
             eval_current(&mut _current_token, &mut result);
             result.push(Token::EndStatement);
-            println!("End Statement");
             continue
         }
         if c == flavor.dot.chars().next().expect("Flavor error") {
             eval_current(&mut _current_token, &mut result);
             result.push(Token::Dot);
-            println!("Dot");
             continue
         }
         if c == flavor.comma.chars().next().expect("Flavor error") {
             eval_current(&mut _current_token, &mut result);
             result.push(Token::Comma);
-            println!("Comma");
+            continue
+        }
+        if c == flavor.add_op.chars().next().expect("Flavor error") && flavor.add_op.chars().count() == 1 {
+            eval_current(&mut _current_token, &mut result);
+            result.push(Token::Plus);
+            continue
+        }
+        if c == flavor.sub_op.chars().next().expect("Flavor error") && flavor.sub_op.chars().count() == 1 {
+            eval_current(&mut _current_token, &mut result);
+            result.push(Token::Minus);
+            continue
+        }
+        if c == flavor.mult_op.chars().next().expect("Flavor error") && flavor.mult_op.chars().count() == 1 {
+            eval_current(&mut _current_token, &mut result);
+            result.push(Token::Multiply);
+            continue
+        }
+        if c == flavor.div_op.chars().next().expect("Flavor error") && flavor.div_op.chars().count() == 1 {
+            eval_current(&mut _current_token, &mut result);
+            result.push(Token::Divide);
             continue
         }
         if c == flavor.assignment_op.chars().next().expect("Flavor error") && flavor.assignment_op.chars().count() == 1 {
             eval_current(&mut _current_token, &mut result);
             result.push(Token::Assign);
-            println!("Assignment");
             continue
         }
         if c == flavor.parentheses.chars().next().expect("Flavor error") {
             eval_current(&mut _current_token, &mut result);
             result.push(Token::LParen);
-            println!("Left Parentheses");
             continue
         }
         if c == flavor.parentheses.chars().last().expect("Flavor error") {
             eval_current(&mut _current_token, &mut result);
             result.push(Token::RParen);
-            println!("Right Parentheses");
             continue
         }
         if c == flavor.block_def.chars().next().expect("Flavor error") {
             eval_current(&mut _current_token, &mut result);
             result.push(Token::LBlock);
-            println!("Left Block");
             continue
         }
         if c == flavor.block_def.chars().last().expect("Flavor error") {
             eval_current(&mut _current_token, &mut result);
             result.push(Token::RBlock);
-            println!("Right Block");
             continue
         }
         _current_token.push(c);

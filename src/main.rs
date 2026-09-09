@@ -19,7 +19,6 @@ fn main() {
             .arg("run")
             .status()
             .expect("Couldn't run Rust project.");
-        println!("Ran successfully!");
     } else if action == "create" {
         let name = std::env::args().nth(2).expect("No project name given.");
         println!("Creating new project with name: {:?}...", &name);

@@ -1,27 +1,27 @@
 use crate::lexer::{self, Token};
-use std::{env::Args, mem::discriminant};
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Statement {
-    Number(f64),
-    StringLiteral(String),
-    BoolLiteral(bool),
-    Variable(String),
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ASTNode {
-    VariableDeclaration { name: String, value: Statement },
-    VariableAssignment { name: String, value: Statement },
-    FunctionCall { name: String, args: Vec<Statement> },
-    FunctionDef { name: String, args: Vec<Statement>, children: Vec<ASTNode> },
-    IfStatement { conditions: Vec<Statement>, children: Vec<ASTNode> },
+    VariableDeclaration { name: String, value: Vec<Token> },
+    VariableAssignment { name: String, value: Vec<Token> },
+    FunctionCall { name: String, args: Vec<Token> },
+    FunctionDef { name: String, args: Vec<Token>, children: Vec<ASTNode> },
+    IfStatement { conditions: Vec<Token>, children: Vec<ASTNode> },
+}
+pub fn get_operator(tokens: &Vec<lexer::Token>, start_index: usize) -> (Vec<Token>, usize) {
+    let mut tks: Vec<Token> = Vec::new();
+    let mut i = start_index;
+    while i < tokens.len() && tokens[i] != Token::LBlock && tokens[i] != Token::RParen && tokens[i] != Token::EndStatement {
+        tks.push(tokens[i].to_owned());
+        i += 1;
+    }
+    return (tks, i);
 }
 
-pub fn generate_tree(tokens: &Vec<lexer::Token>, startIndex: usize) -> (Vec<ASTNode>, usize) {
+pub fn generate_tree(tokens: &Vec<lexer::Token>, start_index: usize) -> (Vec<ASTNode>, usize) {
     let mut result: Vec<ASTNode> = Vec::new();
 
-    let mut i = startIndex;
+    let mut i = start_index;
     while i < tokens.len()-1 && tokens[i] != Token::RBlock {
         let tok = &tokens[i];
         //println!("{:?}", tok);
@@ -33,25 +33,9 @@ pub fn generate_tree(tokens: &Vec<lexer::Token>, startIndex: usize) -> (Vec<ASTN
                     Token::Identifier(var_name) => {
                         match &tokens[i+2] {
                             Token::Assign => {
-                                match &tokens[i+3] {
-                                    Token::StringLiteral(val) => {
-                                        result.push(ASTNode::VariableDeclaration { name: var_name.to_owned() , value: Statement::StringLiteral(val.to_owned()) });
-                                    },
-                                    Token::Number(val) => {
-                                        result.push(ASTNode::VariableDeclaration { name: var_name.to_owned() , value: Statement::Number(val.to_owned()) });
-                                    },
-                                    Token::True => {
-                                        result.push(ASTNode::VariableDeclaration { name: var_name.to_owned() , value: Statement::BoolLiteral(true) });
-                                    }
-                                    Token::False => {
-                                        result.push(ASTNode::VariableDeclaration { name: var_name.to_owned() , value: Statement::BoolLiteral(false) });
-                                    }
-                                    Token::Identifier(name) => {
-                                        result.push(ASTNode::VariableDeclaration { name: var_name.to_owned() , value: Statement::Variable(name.to_owned()) });
-                                    }
-                                    _ => panic!("Unexpected assigned value"),
-                                };
-                                i += 4;
+                                let operator = get_operator(&tokens, i+3);
+                                result.push(ASTNode::VariableDeclaration { name: var_name.to_owned(), value: operator.0 });
+                                i = operator.1;
                                 println!("Defined variable");
                             },
                             _ => panic!("Assignment operator expected"),
@@ -65,28 +49,18 @@ pub fn generate_tree(tokens: &Vec<lexer::Token>, startIndex: usize) -> (Vec<ASTN
                     Token::Identifier(name) => {
                         match &tokens[i+2] {
                             Token::LParen => {
-                                let mut a = 0;
-                                let mut args: Vec<Statement> = Vec::new();
-                                while discriminant(&tokens[i+3+a]) != discriminant(&Token::RParen) {
-                                    match &tokens[i+3+a] {
-                                        Token::Identifier(name) => {
-                                            args.push(Statement::Variable(name.to_owned()));
-                                        },
-                                        _ => panic!("Invalid arguement definition")
-                                    }
-                                    a += 1
-                                }
+                                let operator = get_operator(&tokens, i+3);
                                 println!("Function definition");
-                                i += 3+a;
+                                i = operator.1;
                                 match &tokens[i+1] {
                                     Token::LBlock => {
                                         let children = generate_tree(&tokens, i+2);
-                                        result.push(ASTNode::FunctionDef { name: name.to_owned(), args: args, children: children.0});
-                                        println!("{:?}", result[result.len()-1]);
+                                        result.push(ASTNode::FunctionDef { name: name.to_owned(), args: operator.0, children: children.0});
                                         i = children.1+1;
+                                        println!("Thing 2: {:?}", &tokens[i]);
                                     }
                                     _ => {
-                                        panic!("Expected left block");
+                                        panic!("Expected left block, found: {:?}", &tokens[i+1]);
                                     }
                                 }
                             }
@@ -97,81 +71,31 @@ pub fn generate_tree(tokens: &Vec<lexer::Token>, startIndex: usize) -> (Vec<ASTN
                 }
             },
             Token::If => {
-                let mut a = 0;
-                let mut conditions: Vec<Statement> = Vec::new();
-                while discriminant(&tokens[i+1+a]) != discriminant(&Token::LBlock) {
-                    match &tokens[i+1+a] {
-                        Token::True => {
-                            conditions.push(Statement::BoolLiteral(true));
-                        },
-                        Token::False => {
-                            conditions.push(Statement::BoolLiteral(false));
-                        },
-                        _ => panic!("Invalid condition: {:?}", &tokens[i+1+a])
-                    }
-                    a += 1
-                }
-                match &tokens[i+1+a] {
+                let operator = get_operator(&tokens, i+1);
+                match &tokens[operator.1] {
                     Token::LBlock => {
-                        let children = generate_tree(&tokens, i+2+a);
-                        result.push(ASTNode::IfStatement { conditions, children: children.0 });
+                        let children = generate_tree(&tokens, operator.1+1);
+                        result.push(ASTNode::IfStatement { conditions: operator.0, children: children.0 });
                         println!("{:?}", result[result.len()-1]);
                         i = children.1+1;
+                        println!("{:?}", &tokens[children.1]);
                     }
-                    _ => panic!("LBlock expected")
+                    _ => panic!("LBlock expected: {:?}", &tokens[operator.1])
                 }
             }
             Token::Identifier(name) => {
                 match &tokens[i+1] {
                     Token::LParen => {
-                        let mut a = 0;
-                        let mut args: Vec<Statement> = Vec::new();
-                        while discriminant(&tokens[i+2+a]) != discriminant(&Token::RParen) {
-                            match &tokens[i+2+a] {
-                                Token::StringLiteral(val) => {
-                                    args.push(Statement::StringLiteral(val.to_owned()));
-                                },
-                                Token::Number(val) => {
-                                    args.push(Statement::Number(val.to_owned()));
-                                },
-                                Token::True => {
-                                    args.push(Statement::BoolLiteral(true));
-                                }
-                                Token::False => {
-                                    args.push(Statement::BoolLiteral(false));
-                                },
-                                Token::Identifier(name) => {
-                                    args.push(Statement::Variable(name.to_owned()));
-                                }
-                                Token::Comma => {},
-                                _ => panic!("Invalid arguement definition")
-                            }
-                            a += 1
-                        }
-                        i += 3+a;
-                        result.push(ASTNode::FunctionCall { name: name.to_owned(), args: args});
-                        println!("Function call");
+                        let mut args = get_operator(&tokens, i+2);
+                        let res = ASTNode::FunctionCall { name: name.to_owned(), args: args.0};
+                        result.push(res.to_owned());
+                        i = args.1+2;
+                        println!("Function call: {:?}", &res);
                     },
                     Token::Assign => {
-                        match &tokens[i+2] {
-                            Token::Number(val) => {
-                                result.push(ASTNode::VariableAssignment { name: name.to_owned(), value: Statement::Number(val.to_owned()) });
-                            },
-                            Token::StringLiteral(val) => {
-                                result.push(ASTNode::VariableAssignment { name: name.to_owned(), value: Statement::StringLiteral(val.to_owned()) });
-                            },
-                            Token::True => {
-                                result.push(ASTNode::VariableAssignment { name: name.to_owned(), value: Statement::BoolLiteral(true) });
-                            }
-                            Token::False => {
-                                result.push(ASTNode::VariableAssignment { name: name.to_owned(), value: Statement::BoolLiteral(false) });
-                            }
-                            Token::Identifier(name) => {
-                                result.push(ASTNode::VariableAssignment { name: name.to_owned(), value: Statement::Variable(name.to_owned()) });
-                            }
-                            _ => panic!("Cannot assign a variable to that.")
-                        }
-                        i += 3;
+                        let operator = get_operator(&tokens, i+2);
+                        i = operator.1;
+                        result.push(ASTNode::VariableAssignment { name: name.to_owned(), value: operator.0 });
                         println!("Assigning to a variable");
                     }
                     _ => panic!("Unexpected identifier use")
@@ -179,9 +103,8 @@ pub fn generate_tree(tokens: &Vec<lexer::Token>, startIndex: usize) -> (Vec<ASTN
             },
             _ => {
                 panic!("Issue here: {:?}", &tokens[i]);
-            }
+            },
         }
     }
-
     return (result, i);
 }

@@ -1,4 +1,6 @@
 use std::fs;
+use std::process::Command;
+use std::env;
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
 
@@ -40,75 +42,77 @@ pub struct Flavor {
     pub for_statement: String,
     pub while_statement: String,
 }
-fn statement_to_string(statement: parser::Statement) -> String {
-    match statement {
-        parser::Statement::BoolLiteral(val) => {
-            return format!("{:?}", val);
-        },
-        parser::Statement::StringLiteral(val) => {
-            return format!("{:?}", val);
-        },
-        parser::Statement::Number(val) => {
-            return format!("{:?}", val);
-        },
-        parser::Statement::Variable(name) => {
-            return format!("{}", name);
+fn operation_to_string(operation: Vec<lexer::Token>) -> String {
+    let mut op_str = String::new();
+    for (i, token) in operation.iter().enumerate() {
+        match token {
+            lexer::Token::Plus => op_str.push_str("+"),
+            lexer::Token::Minus => op_str.push_str("-"),
+            lexer::Token::Multiply => op_str.push_str("*"),
+            lexer::Token::Divide => op_str.push_str("/"),
+            lexer::Token::LParen => op_str.push_str("("),
+            lexer::Token::RParen => op_str.push_str(")"),
+            lexer::Token::True => op_str.push_str("true"),
+            lexer::Token::False => op_str.push_str("false"),
+            lexer::Token::Comma => op_str.push_str(","),
+            lexer::Token::Plus => op_str.push_str("+"),
+            lexer::Token::Minus => op_str.push_str("-"),
+            lexer::Token::Multiply => op_str.push_str("*"),
+            lexer::Token::Divide => op_str.push_str("/"),
+            lexer::Token::Equal => op_str.push_str("=="),
+            lexer::Token::NotEqual => op_str.push_str("!="),
+            lexer::Token::Greater => op_str.push_str(">"),
+            lexer::Token::EGreater => op_str.push_str(">="),
+            lexer::Token::Less => op_str.push_str("<"),
+            lexer::Token::ELess => op_str.push_str("<="),
+            lexer::Token::Identifier(name) => op_str.push_str(&name),
+            lexer::Token::StringLiteral(val) => op_str.push_str(format!("\"{}\"", val).as_str()),
+            lexer::Token::Number(val) => op_str.push_str(&val.to_string()),
+            _ => panic!("Invalid operand: {:?}", token)
+        }
+        if i < operation.len()-1 {
+            op_str.push_str(" ");
         }
     }
-}
-
-fn args_to_string(statements: Vec<parser::Statement>) -> String {
-    let mut new = String::new();
-
-    for (i, statement) in statements.iter().enumerate() {
-        new.push_str(&statement_to_string(statement.to_owned()));
-        if i < statements.len() - 1 {
-            new.push_str(", ");
-        }
-    }
-    return new;
+    return op_str;
 }
 fn get_indented_string(numIndents: i32) -> String {
     let mut indented = String::new();
-    for b in [0..numIndents] {
+    for b in 0..numIndents {
         indented.push_str("\t");
     }
     return indented;
 }
 
-fn generate_translated(tree: &Vec<parser::ASTNode>, startIndex: usize, block_depth: i32) -> (String, usize) {
+fn generate_translated(tree: &Vec<parser::ASTNode>, block_depth: i32) -> (String, usize) {
     let mut translated = String::new();
 
-    let mut i = startIndex;
+    let mut i = 0;
     while i < tree.len() {
         translated.push_str(&get_indented_string(block_depth));
         match &tree[i] {
             parser::ASTNode::FunctionCall { name, args } => {
                 if (name == "print") {
-                    translated.push_str(&format!("println!({});", args_to_string(args.to_owned())));
+                    translated.push_str(&format!("println!({});", operation_to_string(args.to_owned())));
                 } else {
-                    translated.push_str(&format!("{}({});", name, args_to_string(args.to_owned())));
+                    translated.push_str(&format!("{}({});", name, operation_to_string(args.to_owned())));
                 }
             }
             parser::ASTNode::VariableDeclaration { name, value } => {
-                translated.push_str(&format!("let mut {} = {};", name, statement_to_string(value.to_owned())));
+                translated.push_str(&format!("let mut {} = {};", name, operation_to_string(value.to_owned())));
             },
             parser::ASTNode::VariableAssignment { name, value } => {
-                translated.push_str(&format!("{} = {};", name, statement_to_string(value.to_owned())));
+                translated.push_str(&format!("{} = {};", name, operation_to_string(value.to_owned())));
             },
             parser::ASTNode::FunctionDef { name, args, children } => {
-                translated.push_str(&format!("fn {}({}) {{ \n", name.to_owned(), args_to_string(args.to_owned())));
-                let t = &generate_translated(children, 0, block_depth+1).0;
-                translated.push_str(&get_indented_string(block_depth));
-                translated.push_str(t);
+                translated.push_str(&format!("fn {}({}) {{ \n", name.to_owned(), operation_to_string(args.to_owned())));
+                translated.push_str(&generate_translated(children, block_depth+1).0);
                 translated.push_str(&get_indented_string(block_depth));
                 translated.push_str("}");
             },
             parser::ASTNode::IfStatement { conditions, children } => {
-                translated.push_str(&format!("if {} {{ \n", args_to_string(conditions.to_owned())));
-                let t = &generate_translated(children, 0, block_depth+1).0;
-                translated.push_str(&get_indented_string(block_depth));
-                translated.push_str(t);
+                translated.push_str(&format!("if {} {{ \n", operation_to_string(conditions.to_owned())));
+                translated.push_str(&generate_translated(children, block_depth+1).0);
                 translated.push_str(&get_indented_string(block_depth));
                 translated.push_str("}");
             }
@@ -125,7 +129,7 @@ fn write_rust_file(tree: Vec<parser::ASTNode>) {
 
     translated.push_str("fn main() { \n");
 
-    translated.push_str(&generate_translated(&tree, 0, 1).0);
+    translated.push_str(&generate_translated(&tree, 1).0);
 
     translated.push_str("}");
 
@@ -146,4 +150,15 @@ pub fn translate() {
     println!("Parsing...");
     let tree = parser::generate_tree(&tokens, 0);
     write_rust_file(tree.0);
+    let mut current_dir = env::current_dir().expect("Failed to get current directory").join("translated");
+    let rustOutput = Command::new("cargo")
+            .current_dir(&current_dir)
+            .arg("fix")
+            .arg("--bin")
+            .arg(format!("{}", "my-project"))
+            .arg("-p")
+            .arg("my-project")
+            .arg("--allow-dirty")
+            .status()
+            .expect("Couldn't build Rust project.");
 }
