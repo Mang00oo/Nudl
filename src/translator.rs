@@ -40,6 +40,7 @@ pub struct Flavor {
     pub if_statement: String,
     pub else_statement: String,
     pub for_statement: String,
+    pub for_in: String,
     pub while_statement: String,
 }
 fn operation_to_string(operation: Vec<lexer::Token>) -> String {
@@ -55,16 +56,13 @@ fn operation_to_string(operation: Vec<lexer::Token>) -> String {
             lexer::Token::True => op_str.push_str("true"),
             lexer::Token::False => op_str.push_str("false"),
             lexer::Token::Comma => op_str.push_str(","),
-            lexer::Token::Plus => op_str.push_str("+"),
-            lexer::Token::Minus => op_str.push_str("-"),
-            lexer::Token::Multiply => op_str.push_str("*"),
-            lexer::Token::Divide => op_str.push_str("/"),
             lexer::Token::Equal => op_str.push_str("=="),
             lexer::Token::NotEqual => op_str.push_str("!="),
             lexer::Token::Greater => op_str.push_str(">"),
             lexer::Token::EGreater => op_str.push_str(">="),
             lexer::Token::Less => op_str.push_str("<"),
             lexer::Token::ELess => op_str.push_str("<="),
+            lexer::Token::Dot => {op_str.pop(); op_str.push_str(".");},
             lexer::Token::Identifier(name) => op_str.push_str(&name),
             lexer::Token::StringLiteral(val) => op_str.push_str(format!("\"{}\"", val).as_str()),
             lexer::Token::Number(val) => op_str.push_str(&val.to_string()),
@@ -92,8 +90,10 @@ fn generate_translated(tree: &Vec<parser::ASTNode>, block_depth: i32) -> (String
         translated.push_str(&get_indented_string(block_depth));
         match &tree[i] {
             parser::ASTNode::FunctionCall { name, args } => {
-                if (name == "print") {
+                if name == "print" {
                     translated.push_str(&format!("println!({});", operation_to_string(args.to_owned())));
+                } else if name == "range" {
+                    translated.push_str(&format!("0..{}", operation_to_string(args.to_owned())));
                 } else {
                     translated.push_str(&format!("{}({});", name, operation_to_string(args.to_owned())));
                 }
@@ -112,6 +112,46 @@ fn generate_translated(tree: &Vec<parser::ASTNode>, block_depth: i32) -> (String
             },
             parser::ASTNode::IfStatement { conditions, children } => {
                 translated.push_str(&format!("if {} {{ \n", operation_to_string(conditions.to_owned())));
+                translated.push_str(&generate_translated(children, block_depth+1).0);
+                translated.push_str(&get_indented_string(block_depth));
+                translated.push_str("}");
+            }
+            parser::ASTNode::ElseStatement { children } => {
+                match &tree[i-1] {
+                    parser::ASTNode::IfStatement { conditions, children} => {},
+                     parser::ASTNode::ElseIfStatement { conditions, children} => {},
+                    _ => panic!("Expected if or else if statement before")
+                }
+                for i in 0..block_depth+1 {
+                    translated.pop();
+                }
+                translated.push_str(&format!(" else {{ \n"));
+                translated.push_str(&generate_translated(children, block_depth+1).0);
+                translated.push_str(&get_indented_string(block_depth));
+                translated.push_str("}");
+            }
+            parser::ASTNode::ElseIfStatement { conditions, children } => {
+                match &tree[i-1] {
+                    parser::ASTNode::IfStatement { conditions, children} => {},
+                    parser::ASTNode::ElseIfStatement { conditions, children} => {},
+                    _ => panic!("Expected if or else if statement before")
+                }
+                for i in 0..block_depth+1 {
+                    translated.pop();
+                }
+                translated.push_str(&format!(" else if {} {{ \n", operation_to_string(conditions.to_owned())));
+                translated.push_str(&generate_translated(children, block_depth+1).0);
+                translated.push_str(&get_indented_string(block_depth));
+                translated.push_str("}");
+            },
+            parser::ASTNode::WhileStatement { conditions, children } => {
+                translated.push_str(&format!("while {} {{ \n", operation_to_string(conditions.to_owned())));
+                translated.push_str(&generate_translated(children, block_depth+1).0);
+                translated.push_str(&get_indented_string(block_depth));
+                translated.push_str("}");
+            },
+            parser::ASTNode::ForStatement { identifier, conditions, children } => {
+                translated.push_str(&format!("for {} in {} {{ \n", identifier, operation_to_string(conditions.to_owned())));
                 translated.push_str(&generate_translated(children, block_depth+1).0);
                 translated.push_str(&get_indented_string(block_depth));
                 translated.push_str("}");
@@ -148,7 +188,7 @@ pub fn translate() {
     println!("Tokenizing...");
     let tokens = lexer::tokenize(&main_file, flavor);
     println!("Parsing...");
-    let tree = parser::generate_tree(&tokens, 0);
+    let tree = parser::generate_tree(&tokens, 0, &main_file);
     write_rust_file(tree.0);
     let mut current_dir = env::current_dir().expect("Failed to get current directory").join("translated");
     let rustOutput = Command::new("cargo")
