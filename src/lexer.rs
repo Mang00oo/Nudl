@@ -47,7 +47,7 @@ pub enum Token {
 
 }
 
-pub fn tokenize(source: &String, flavor: Flavor) -> Vec<(Token, Span)> {
+pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
     let mut result: Vec<(Token, Span)> = Vec::new();
 
     let mut _current_token = String::new();

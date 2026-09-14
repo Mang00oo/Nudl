@@ -7,7 +7,7 @@ use serde_json::Result;
 use crate::lexer;
 use crate::parser;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Flavor {
     pub statically_typed: bool,
 
@@ -41,6 +41,7 @@ pub struct Flavor {
     pub else_statement: String,
     pub for_statement: String,
     pub for_in: String,
+    pub for_iter: String,
     pub while_statement: String,
 }
 fn operation_to_string(operation: Vec<lexer::Token>) -> String {
@@ -68,7 +69,7 @@ fn operation_to_string(operation: Vec<lexer::Token>) -> String {
             lexer::Token::Number(val) => op_str.push_str(&val.to_string()),
             _ => panic!("Invalid operand: {:?}", token)
         }
-        if i < operation.len()-1 {
+        if i < operation.len()-1 && token != &lexer::Token::Dot && token != &lexer::Token::LParen && &operation[i+1] != &lexer::Token::LParen && token != &lexer::Token::RParen && &operation[i+1] != &lexer::Token::RParen {
             op_str.push_str(" ");
         }
     }
@@ -164,10 +165,14 @@ fn generate_translated(tree: &Vec<parser::ASTNode>, block_depth: i32) -> (String
     return (translated, i);
 }
 
-fn write_rust_file(tree: Vec<parser::ASTNode>) {
+fn write_rust_file(tree: Vec<parser::ASTNode>, flavor: &Flavor) {
     let mut translated = String::new();
 
     translated.push_str("fn main() { \n");
+
+    translated.push_str(&format!("\tlet {} = |num| {{\n", &flavor.for_iter));
+    translated.push_str("\t\treturn 0..num;\n");
+    translated.push_str("\t};\n");
 
     translated.push_str(&generate_translated(&tree, 1).0);
 
@@ -186,10 +191,10 @@ pub fn translate() {
         let mapContent = fs::read_to_string(file_path);
     }
     println!("Tokenizing...");
-    let tokens = lexer::tokenize(&main_file, flavor);
+    let tokens = lexer::tokenize(&main_file, &flavor);
     println!("Parsing...");
     let tree = parser::generate_tree(&tokens, 0, &main_file);
-    write_rust_file(tree.0);
+    write_rust_file(tree.0, &flavor);
     let mut current_dir = env::current_dir().expect("Failed to get current directory").join("translated");
     let rustOutput = Command::new("cargo")
             .current_dir(&current_dir)
