@@ -34,7 +34,12 @@ pub struct Flavor {
     pub eo_greater_op: String,
     pub eo_less_op: String,
 
+    pub and_statement: String,
+    pub or_statement: String,
+    pub not_statement: String,
+
     pub function_def: String,
+    pub function_return: String,
     pub variable_def: String,
 
     pub if_statement: String,
@@ -63,21 +68,32 @@ fn operation_to_string(operation: Vec<lexer::Token>) -> String {
             lexer::Token::EGreater => op_str.push_str(">="),
             lexer::Token::Less => op_str.push_str("<"),
             lexer::Token::ELess => op_str.push_str("<="),
+            lexer::Token::And => op_str.push_str("&&"),
+            lexer::Token::Or => op_str.push_str("||"),
+            lexer::Token::Not => op_str.push_str("!"),
             lexer::Token::Dot => {op_str.pop(); op_str.push_str(".");},
             lexer::Token::Identifier(name) => op_str.push_str(&name),
             lexer::Token::StringLiteral(val) => op_str.push_str(format!("\"{}\"", val).as_str()),
             lexer::Token::Number(val) => op_str.push_str(&val.to_string()),
             _ => panic!("Invalid operand: {:?}", token)
         }
-        if i < operation.len()-1 && token != &lexer::Token::Dot && token != &lexer::Token::LParen && &operation[i+1] != &lexer::Token::LParen && token != &lexer::Token::RParen && &operation[i+1] != &lexer::Token::RParen {
+        if i < operation.len()-1 && token != &lexer::Token::Dot && token != &lexer::Token::LParen && &operation[i+1] != &lexer::Token::LParen && token != &lexer::Token::RParen && &operation[i+1] != &lexer::Token::RParen && &operation[i+1] != &lexer::Token::Not {
             op_str.push_str(" ");
         }
     }
     return op_str;
 }
-fn get_indented_string(numIndents: i32) -> String {
+fn type_to_string(var_type: &parser::VarType) -> String {
+    match &var_type {
+        parser::VarType::Boolean => return String::from("bool"),
+        parser::VarType::Number => return String::from("f64"),
+        parser::VarType::String => return String::from("&str"),
+        parser::VarType::None => return String::from("()"),
+    }
+}
+fn get_indented_string(num_indents: i32) -> String {
     let mut indented = String::new();
-    for b in 0..numIndents {
+    for b in 0..num_indents {
         indented.push_str("\t");
     }
     return indented;
@@ -105,12 +121,15 @@ fn generate_translated(tree: &Vec<parser::ASTNode>, block_depth: i32) -> (String
             parser::ASTNode::VariableAssignment { name, value } => {
                 translated.push_str(&format!("{} = {};", name, operation_to_string(value.to_owned())));
             },
-            parser::ASTNode::FunctionDef { name, args, children } => {
-                translated.push_str(&format!("let {} = |{}| {{ \n", name.to_owned(), operation_to_string(args.to_owned())));
+            parser::ASTNode::FunctionDef { name, args, children, returns } => {
+                translated.push_str(&format!("let {} = |{}| -> {} {{ \n", name.to_owned(), operation_to_string(args.to_owned()), type_to_string(returns)));
                 translated.push_str(&generate_translated(children, block_depth+1).0);
                 translated.push_str(&get_indented_string(block_depth));
                 translated.push_str("};");
             },
+            parser::ASTNode::FunctionReturn { args } => {
+                translated.push_str(&format!("return {}; \n", operation_to_string(args.to_owned())));
+            }
             parser::ASTNode::IfStatement { conditions, children } => {
                 translated.push_str(&format!("if {} {{ \n", operation_to_string(conditions.to_owned())));
                 translated.push_str(&generate_translated(children, block_depth+1).0);
@@ -118,11 +137,6 @@ fn generate_translated(tree: &Vec<parser::ASTNode>, block_depth: i32) -> (String
                 translated.push_str("}");
             }
             parser::ASTNode::ElseStatement { children } => {
-                match &tree[i-1] {
-                    parser::ASTNode::IfStatement { conditions, children} => {},
-                     parser::ASTNode::ElseIfStatement { conditions, children} => {},
-                    _ => panic!("Expected if or else if statement before")
-                }
                 for i in 0..block_depth+1 {
                     translated.pop();
                 }

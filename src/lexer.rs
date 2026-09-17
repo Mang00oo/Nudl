@@ -36,6 +36,9 @@ pub enum Token {
     Less,
     EGreater,
     ELess,
+    And,
+    Or,
+    Not,
     EndStatement, // ;
     Comma, // ,
     Dot, // .
@@ -65,6 +68,8 @@ pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
             result.push((Token::Var, span));
         } else if token.as_str() == flavor.function_def {
             result.push((Token::Fn, span));
+        } else if token.as_str() == flavor.function_return {
+            result.push((Token::Return, span));
         } else if token.as_str() == flavor.if_statement {
             result.push((Token::If, span));
         } else if token.as_str() == flavor.else_statement {
@@ -98,6 +103,12 @@ pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
             result.push((Token::EGreater, span));
         } else if token.as_str() == flavor.less_op {
             result.push((Token::Less, span));
+        } else if token.as_str() == flavor.and_statement {
+            result.push((Token::And, span));
+        } else if token.as_str() == flavor.or_statement {
+            result.push((Token::Or, span));
+        } else if token.as_str() == flavor.not_statement {
+            result.push((Token::Not, span));
         } else if token.as_str() == flavor.eo_less_op {
             result.push((Token::ELess, span));
         } else if token.as_str() == flavor.assignment_op {

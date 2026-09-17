@@ -1,6 +1,7 @@
 use core::panic;
 use line_index::LineIndex;
 use colored::Colorize;
+use std::collections::HashMap;
 
 use crate::lexer::{self, Token};
 
@@ -9,12 +10,20 @@ pub enum ASTNode {
     VariableDeclaration { name: String, value: Vec<Token> },
     VariableAssignment { name: String, value: Vec<Token> },
     FunctionCall { name: String, args: Vec<Token> },
-    FunctionDef { name: String, args: Vec<Token>, children: Vec<ASTNode> },
+    FunctionDef { name: String, args: Vec<Token>, children: Vec<ASTNode>, returns: VarType },
+    FunctionReturn { args: Vec<Token> },
     IfStatement { conditions: Vec<Token>, children: Vec<ASTNode> },
     ElseStatement { children: Vec<ASTNode> },
     ElseIfStatement { conditions: Vec<Token>, children: Vec<ASTNode> },
     WhileStatement { conditions: Vec<Token>, children: Vec<ASTNode> },
     ForStatement { identifier: String, conditions: Vec<Token>, children: Vec<ASTNode> },
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum VarType {
+    String,
+    Number,
+    Boolean,
+    None,
 }
 pub fn get_operator(tokens: &Vec<(lexer::Token, lexer::Span)>, start_index: usize) -> (Vec<Token>, usize) {
     let mut tks: Vec<Token> = Vec::new();
@@ -52,9 +61,29 @@ pub fn generate_error_message(span: &lexer::Span, message: &str, source: &str) {
     println!(" -> {}, found {} (line {}, col {})", message, issue, coord.line, coord.col);
     panic!(" ");
 }
+fn infer_type (tokens: &Vec<Token>) -> VarType {
+    if tokens.contains(&lexer::Token::Greater) { return VarType::Boolean };
+    if tokens.contains(&lexer::Token::EGreater) { return VarType::Boolean };
+    if tokens.contains(&lexer::Token::Less) { return VarType::Boolean };
+    if tokens.contains(&lexer::Token::ELess) { return VarType::Boolean };
+    if tokens.contains(&lexer::Token::Plus) { return VarType::Number };
+    if tokens.contains(&lexer::Token::Minus) { return VarType::Number };
+    if tokens.contains(&lexer::Token::Multiply) { return VarType::Number };
+    if tokens.contains(&lexer::Token::Divide) { return VarType::Number };
+    println!("Tokens: {:?}", &tokens);
+    match &tokens[0] {
+        lexer::Token::StringLiteral(val) => return VarType::String,
+        lexer::Token::Number(val) => return VarType::Number,
+        lexer::Token::True => return VarType::Boolean,
+        lexer::Token::False => return VarType::Boolean,
+        _ => panic!("Could not infer type for: {:?}", &tokens[0])
+    }
+}
 
 pub fn generate_tree(tokens: &Vec<(lexer::Token, lexer::Span)>, start_index: usize, source: &str) -> (Vec<ASTNode>, usize) {
     let mut result: Vec<ASTNode> = Vec::new();
+
+    let mut var_types: HashMap<&String, VarType> = HashMap::new();
 
     let mut i = start_index;
     while i < tokens.len()-1 && tokens[i].0 != Token::RBlock {
@@ -88,7 +117,16 @@ pub fn generate_tree(tokens: &Vec<(lexer::Token, lexer::Span)>, start_index: usi
                                 match &tokens[i+1].0 {
                                     Token::LBlock => {
                                         let children = generate_tree(&tokens, i+2, source);
-                                        result.push(ASTNode::FunctionDef { name: name.to_owned(), args: operator.0, children: children.0});
+                                        let mut ty = VarType::None;
+                                        for node in &children.0 {
+                                            match node {
+                                                ASTNode::FunctionReturn { args } => {
+                                                    ty = infer_type(args);
+                                                },
+                                                _ => continue
+                                            }
+                                        }
+                                        result.push(ASTNode::FunctionDef { name: name.to_owned(), args: operator.0, children: children.0, returns: ty});
                                         i = children.1+1;
                                     }
                                     _ => generate_error_message(&tokens[i+1].1, "Expected left block", source),
@@ -110,6 +148,11 @@ pub fn generate_tree(tokens: &Vec<(lexer::Token, lexer::Span)>, start_index: usi
                     }
                     _ => generate_error_message(&tokens[operator.1].1, "Left block expected", source),
                 }
+            }
+            Token::Return => {
+                let operator = get_operator(&tokens, i+1);
+                result.push(ASTNode::FunctionReturn { args: operator.0 });
+                i = operator.1+1;
             }
             Token::While => {
                 let operator = get_operator(&tokens, i+1);
@@ -139,6 +182,11 @@ pub fn generate_tree(tokens: &Vec<(lexer::Token, lexer::Span)>, start_index: usi
                 }
             }
             Token::Else => {
+                match &result[result.len()-1] {
+                    ASTNode::IfStatement { conditions, children} => {},
+                    ASTNode::ElseIfStatement { conditions, children} => {},
+                    _ =>  generate_error_message(&tokens[i].1, "Preceeding if or else if expected", source),
+                }
                 match &tokens[i+1].0 {
                     Token::LBlock => {
                         let children = generate_tree(&tokens, i+2, source);
