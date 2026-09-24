@@ -1,10 +1,9 @@
 pub fn flavor_file_default() -> &'static str {
     return r##"{
-    "statically_typed": false,
-
     "block_def": "{}",
     "parentheses": "()",
-    "comments": "#",
+    "start_comment": "#",
+    "end_comment": "\n",
     "line_end": ";",
     "dot": ".",
     "comma": ",",
@@ -25,12 +24,19 @@ pub fn flavor_file_default() -> &'static str {
     "eo_greater_op": ">=",
     "eo_less_op": "<=",
 
+    "and_statement": "and",
+    "or_statement": "or",
+    "not_statement": "not",
+
     "function_def": "def",
+    "function_return": "return",
     "variable_def": "var",
 
     "if_statement": "if",
     "else_statement": "else",
     "for_statement": "for",
+    "for_in": "in",
+    "for_iter": "range",
     "while_statement": "while"
 }"##
 }

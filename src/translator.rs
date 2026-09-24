@@ -9,11 +9,10 @@ use crate::parser;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Flavor {
-    pub statically_typed: bool,
-
     pub block_def: String,
     pub parentheses: String,
-    pub comments: String,
+    pub start_comment: String,
+    pub end_comment: String,
     pub line_end: String,
     pub dot: String,
     pub comma: String,
@@ -48,6 +47,8 @@ pub struct Flavor {
     pub for_in: String,
     pub for_iter: String,
     pub while_statement: String,
+    pub loop_break: String,
+    pub loop_continue: String,
 }
 fn operation_to_string(operation: Vec<lexer::Token>) -> String {
     let mut op_str = String::new();

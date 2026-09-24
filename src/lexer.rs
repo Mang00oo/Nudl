@@ -44,7 +44,9 @@ pub enum Token {
     Dot, // .
     LParen, RParen, // ()
     LBlock, RBlock, // {}
-    Quote, // "
+    StartComment, // #
+    EndComment,
+
 
     EOF,
 
@@ -55,8 +57,12 @@ pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
 
     let mut _current_token = String::new();
 
+    let mut is_commented: bool = false;
     
-    let eval_current = |current_token: &mut String, result: &mut Vec<(Token, Span)>, index: usize| {
+    let mut eval_current = |current_token: &mut String,
+                            result: &mut Vec<(Token, Span)>,
+                            index: usize,
+                            is_commented: &mut bool| {
         let token = std::mem::take(current_token);
         let token_len = token.chars().count();
         let span = Span {
@@ -85,6 +91,11 @@ pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
             chars.next();
             chars.next_back();
             result.push((Token::StringLiteral(chars.as_str().to_owned()), span));
+        } else if token.as_str() == flavor.start_comment {
+            result.push((Token::StartComment, span));
+            *is_commented = true;
+        } else if token.as_str() == flavor.end_comment && *is_commented {
+            result.push((Token::EndComment, span));
         } else if token.as_str() == flavor.add_op {
             result.push((Token::Plus, span));
         } else if token.as_str() == flavor.sub_op {
@@ -126,9 +137,17 @@ pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
     
     let mut is_in_literal: bool = false;
     for (i, c) in source.chars().into_iter().enumerate() {
-        if c.is_whitespace() && !is_in_literal {
-            eval_current(&mut _current_token, &mut result, i);
-            continue;
+        if c.is_whitespace() && !is_in_literal{
+            if !(is_commented && flavor.end_comment.chars().next().expect("End comment cannot be empty.") == c) {
+                eval_current(&mut _current_token, &mut result, i, &mut is_commented);
+                continue;
+            } else {
+                let _ = std::mem::take(&mut _current_token);
+                result.push((Token::EndComment, Span { lo: i, hi: i+flavor.end_comment.chars().count() }));
+                is_commented = false;
+                continue;
+            }
+            
         }
         if c == flavor.string_literal.chars().next().expect("Flavor error") {
             is_in_literal = !is_in_literal;
@@ -138,57 +157,62 @@ pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
             continue
         }
         if c == flavor.line_end.chars().next().expect("Flavor error") {
-            eval_current(&mut _current_token, &mut result, i);
+            eval_current(&mut _current_token, &mut result, i, &mut is_commented);
             result.push((Token::EndStatement, Span {lo: i-1, hi: i}));
             continue
         }
         if c == flavor.dot.chars().next().expect("Flavor error") {
-            eval_current(&mut _current_token, &mut result, i);
+            eval_current(&mut _current_token, &mut result, i, &mut is_commented);
             result.push((Token::Dot, Span {lo: i-1, hi: i}));
             continue
         }
         if c == flavor.comma.chars().next().expect("Flavor error") {
-            eval_current(&mut _current_token, &mut result, i);
+            eval_current(&mut _current_token, &mut result, i, &mut is_commented);
             result.push((Token::Comma, Span {lo: i-1, hi: i}));
             continue
         }
+        if c == flavor.start_comment.chars().next().expect("Flavor error") {
+            result.push((Token::StartComment, Span {lo: i-1, hi: i}));
+            is_commented = true;
+            continue
+        }
         if c == flavor.add_op.chars().next().expect("Flavor error") && flavor.add_op.chars().count() == 1 {
-            eval_current(&mut _current_token, &mut result, i);
+            eval_current(&mut _current_token, &mut result, i, &mut is_commented);
             result.push((Token::Plus, Span {lo: i-1, hi: i}));
             continue
         }
         if c == flavor.sub_op.chars().next().expect("Flavor error") && flavor.sub_op.chars().count() == 1 {
-            eval_current(&mut _current_token, &mut result, i);
+            eval_current(&mut _current_token, &mut result, i, &mut is_commented);
             result.push((Token::Minus, Span {lo: i-1, hi: i}));
             continue
         }
         if c == flavor.mult_op.chars().next().expect("Flavor error") && flavor.mult_op.chars().count() == 1 {
-            eval_current(&mut _current_token, &mut result, i);
+            eval_current(&mut _current_token, &mut result, i, &mut is_commented);
             result.push((Token::Multiply, Span {lo: i-1, hi: i}));
             continue
         }
         if c == flavor.div_op.chars().next().expect("Flavor error") && flavor.div_op.chars().count() == 1 {
-            eval_current(&mut _current_token, &mut result, i);
+            eval_current(&mut _current_token, &mut result, i, &mut is_commented);
             result.push((Token::Divide, Span {lo: i-1, hi: i}));
             continue
         }
         if c == flavor.parentheses.chars().next().expect("Flavor error") {
-            eval_current(&mut _current_token, &mut result, i);
+            eval_current(&mut _current_token, &mut result, i, &mut is_commented);
             result.push((Token::LParen, Span {lo: i-1, hi: i}));
             continue
         }
         if c == flavor.parentheses.chars().last().expect("Flavor error") {
-            eval_current(&mut _current_token, &mut result, i);
+            eval_current(&mut _current_token, &mut result, i, &mut is_commented);
             result.push((Token::RParen, Span {lo: i-1, hi: i}));
             continue
         }
         if c == flavor.block_def.chars().next().expect("Flavor error") {
-            eval_current(&mut _current_token, &mut result, i);
+            eval_current(&mut _current_token, &mut result, i, &mut is_commented);
             result.push((Token::LBlock, Span {lo: i-1, hi: i}));
             continue
         }
         if c == flavor.block_def.chars().last().expect("Flavor error") {
-            eval_current(&mut _current_token, &mut result, i);
+            eval_current(&mut _current_token, &mut result, i, &mut is_commented);
             result.push((Token::RBlock, Span {lo: i-1, hi: i}));
             continue
         }

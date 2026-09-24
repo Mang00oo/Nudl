@@ -223,6 +223,13 @@ pub fn generate_tree(tokens: &Vec<(lexer::Token, lexer::Span)>, start_index: usi
                     _ => generate_error_message(&tokens[i+1].1, "Unexpected identifier usage", source),
                 }
             },
+            Token::StartComment => {
+                let mut j = i;
+                while &tokens[j].0 != &Token::EndComment {
+                    j += 1;
+                }
+                i = j+1;
+            },
             _ => generate_error_message(&tokens[i].1, "Unknown issue", source),
         }
     }
