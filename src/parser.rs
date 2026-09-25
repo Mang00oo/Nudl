@@ -17,6 +17,8 @@ pub enum ASTNode {
     ElseIfStatement { conditions: Vec<Token>, children: Vec<ASTNode> },
     WhileStatement { conditions: Vec<Token>, children: Vec<ASTNode> },
     ForStatement { identifier: String, conditions: Vec<Token>, children: Vec<ASTNode> },
+    LoopBreak,
+    LoopContinue,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum VarType {
@@ -70,6 +72,7 @@ fn infer_type (tokens: &Vec<Token>) -> VarType {
     if tokens.contains(&lexer::Token::Minus) { return VarType::Number };
     if tokens.contains(&lexer::Token::Multiply) { return VarType::Number };
     if tokens.contains(&lexer::Token::Divide) { return VarType::Number };
+    if tokens.contains(&lexer::Token::Mod) { return VarType::Number };
     println!("Tokens: {:?}", &tokens);
     match &tokens[0] {
         lexer::Token::StringLiteral(val) => return VarType::String,
@@ -230,6 +233,14 @@ pub fn generate_tree(tokens: &Vec<(lexer::Token, lexer::Span)>, start_index: usi
                 }
                 i = j+1;
             },
+            Token::Break => {
+                result.push(ASTNode::LoopBreak);
+                i += 1;
+            }
+            Token::Continue => {
+                result.push(ASTNode::LoopContinue);
+                i += 1;
+            }
             _ => generate_error_message(&tokens[i].1, "Unknown issue", source),
         }
     }

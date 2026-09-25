@@ -20,6 +20,8 @@ pub enum Token {
     While,
     For,
     In,
+    Break,
+    Continue,
     Return,
     True,
     False,
@@ -30,6 +32,7 @@ pub enum Token {
     Minus, // -
     Multiply, // *
     Divide, // /
+    Mod, // %
     Equal, // ==
     NotEqual, // !=
     Greater,
@@ -104,6 +107,8 @@ pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
             result.push((Token::Multiply, span));
         } else if token.as_str() == flavor.div_op {
             result.push((Token::Divide, span));
+        } else if token.as_str() == flavor.mod_op {
+            result.push((Token::Mod, span));
         } else if token.as_str() == flavor.equal_op {
             result.push((Token::Equal, span));
         } else if token.as_str() == flavor.not_equal_op {
@@ -116,6 +121,10 @@ pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
             result.push((Token::Less, span));
         } else if token.as_str() == flavor.and_statement {
             result.push((Token::And, span));
+        } else if token.as_str() == flavor.loop_break {
+            result.push((Token::Break, span));
+        } else if token.as_str() == flavor.loop_continue {
+            result.push((Token::Continue, span));
         } else if token.as_str() == flavor.or_statement {
             result.push((Token::Or, span));
         } else if token.as_str() == flavor.not_statement {
@@ -179,6 +188,11 @@ pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
         if c == flavor.add_op.chars().next().expect("Flavor error") && flavor.add_op.chars().count() == 1 {
             eval_current(&mut _current_token, &mut result, i, &mut is_commented);
             result.push((Token::Plus, Span {lo: i-1, hi: i}));
+            continue
+        }
+        if c == flavor.mod_op.chars().next().expect("Flavor error") && flavor.mod_op.chars().count() == 1 {
+            eval_current(&mut _current_token, &mut result, i, &mut is_commented);
+            result.push((Token::Mod, Span {lo: i-1, hi: i}));
             continue
         }
         if c == flavor.sub_op.chars().next().expect("Flavor error") && flavor.sub_op.chars().count() == 1 {

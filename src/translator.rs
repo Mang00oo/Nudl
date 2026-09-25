@@ -25,6 +25,7 @@ pub struct Flavor {
     pub sub_op: String,
     pub mult_op: String,
     pub div_op: String,
+    pub mod_op: String,
 
     pub equal_op: String,
     pub not_equal_op: String,
@@ -57,6 +58,7 @@ fn operation_to_string(operation: Vec<lexer::Token>) -> String {
             lexer::Token::Plus => op_str.push_str("+"),
             lexer::Token::Minus => op_str.push_str("-"),
             lexer::Token::Multiply => op_str.push_str("*"),
+            lexer::Token::Mod => op_str.push_str("%"),
             lexer::Token::Divide => op_str.push_str("/"),
             lexer::Token::LParen => op_str.push_str("("),
             lexer::Token::RParen => op_str.push_str(")"),
@@ -129,7 +131,7 @@ fn generate_translated(tree: &Vec<parser::ASTNode>, block_depth: i32) -> (String
                 translated.push_str("};");
             },
             parser::ASTNode::FunctionReturn { args } => {
-                translated.push_str(&format!("return {}; \n", operation_to_string(args.to_owned())));
+                translated.push_str(&format!("return {};", operation_to_string(args.to_owned())));
             }
             parser::ASTNode::IfStatement { conditions, children } => {
                 translated.push_str(&format!("if {} {{ \n", operation_to_string(conditions.to_owned())));
@@ -172,6 +174,8 @@ fn generate_translated(tree: &Vec<parser::ASTNode>, block_depth: i32) -> (String
                 translated.push_str(&get_indented_string(block_depth));
                 translated.push_str("}");
             }
+            parser::ASTNode::LoopBreak => translated.push_str("break;"),
+            parser::ASTNode::LoopContinue => translated.push_str("continue;"),
             _ => {}
         }
         translated.push_str("\n");
