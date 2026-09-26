@@ -16,6 +16,7 @@ pub fn flavor_file_default() -> &'static str {
     "sub_op": "-",
     "mult_op": "*",
     "div_op": "/",
+    "mod_op": "%",
 
     "equal_op": "==",
     "not_equal_op": "!=",
@@ -37,7 +38,9 @@ pub fn flavor_file_default() -> &'static str {
     "for_statement": "for",
     "for_in": "in",
     "for_iter": "range",
-    "while_statement": "while"
+    "while_statement": "while",
+    "loop_break": "break",
+    "loop_continue": "continue"
 }"##
 }
 pub fn std_map_default() -> &'static str {
@@ -46,7 +49,5 @@ pub fn std_map_default() -> &'static str {
 }"##
 }
 pub fn main_script_default() -> &'static str {
-    return r##"var x = 10;
-    print("Hello, world!");
-    "##
+    return r##"print("Hello, world!");"##
 }

@@ -2,9 +2,15 @@
 name = "nudl"
 version = "0.1.0"
 edition = "2024"
+repository = "https://github.com/Mang00oo/Nudl"
 
 [dependencies]
 colored = "3.1.1"
 line-index = "0.1.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
