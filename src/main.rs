@@ -56,6 +56,6 @@ fn main() {
             .expect("Couldn't build Rust project.");
         println!("Built successfully!");
     } else if action == "version" {
-        println!("Nudl version: 0.1.0-alpha");
+        println!("Nudl version: 0.1.1-alpha");
     }
 }
