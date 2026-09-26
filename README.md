@@ -5,7 +5,7 @@ This is Nudl (Nearly User Defined Language). It's a programming language with cu
 You must have the Rust toolchain installed for Nudl to work! Since Nudl is simply a translator, you need the Rust toolchain in order to run or build your project. To use Nudl, you do not need to interact with the Rust toolchain directly, Nudl handles that for you.
 
 ## Install
-Head over to [releases](https://github.com/Mang00oo/Nudl/releases/tag/v0.1.0) and run the shell script in your terminal of choice, or download a binary directly.
+Head over to [releases](https://github.com/Mang00oo/Nudl/releases/tag/v0.1.1) and run the shell script in your terminal of choice, or download a binary directly.
 
 ## Usage
 - To customize your syntax, create a project and edit flavor.json.
