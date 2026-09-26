@@ -50,8 +50,9 @@ pub fn generate_error_message(span: &lexer::Span, message: &str, source: &str) {
     let line_end = &source[span.lo..].find('\n').map(|i| span.lo + i).unwrap_or(source.len());
     let full_line = &source[line_start.to_owned()..line_end.to_owned()];
     let issue = &source[span.lo..span.hi];
-    let line_index = LineIndex::new(source);
-    let coord = line_index.line_col(8.into());
+    let line_index = LineIndex::new(&source);
+    let lo = span.lo as u32;
+    let coord = line_index.line_col(lo.into());
 
     let mut arrows = String::new();
     for i in 0..span.lo-line_start { arrows.push_str(" "); }
@@ -60,7 +61,7 @@ pub fn generate_error_message(span: &lexer::Span, message: &str, source: &str) {
     println!("{}", "Error translating!".red());
     println!("{}", full_line);
     println!("{}", arrows.red());
-    println!(" -> {}, found {} (line {}, col {})", message, issue, coord.line, coord.col);
+    println!(" -> {}, found {} (line {}, col {})", message, issue, coord.line+1, coord.col);
     panic!(" ");
 }
 fn infer_type (tokens: &Vec<Token>) -> VarType {
