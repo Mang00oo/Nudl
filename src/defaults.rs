@@ -8,7 +8,7 @@ pub fn flavor_file_default() -> &'static str {
     "dot": ".",
     "comma": ",",
     "assignment_op": "=",
-    "string_literal": "'",
+    "string_literal": "\"",
     "true_literal": "true",
     "false_literal": "false",
 

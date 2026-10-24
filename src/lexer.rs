@@ -89,7 +89,13 @@ pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
             result.push((Token::In, span));
         } else if token.as_str() == flavor.for_statement {
             result.push((Token::For, span));
-        } else if token.as_str().chars().next() == flavor.string_literal.chars().next() && token.as_str().chars().last() == flavor.string_literal.chars().next() {
+        } else if token.as_str().chars().next() == token.as_str().chars().last()
+            && token
+                .as_str()
+                .chars()
+                .next()
+                .is_some_and(|quote| quote == '\'' || quote == '"' || quote == flavor.string_literal.chars().next().expect("Flavor error"))
+        {
             let mut chars = token.as_str().chars();
             chars.next();
             chars.next_back();
@@ -144,9 +150,21 @@ pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
         }
     };
     
-    let mut is_in_literal: bool = false;
+    let mut string_delimiter: Option<char> = None;
     for (i, c) in source.chars().into_iter().enumerate() {
-        if c.is_whitespace() && !is_in_literal{
+        if let Some(delimiter) = string_delimiter {
+            _current_token.push(c);
+            if c == delimiter {
+                string_delimiter = None;
+            }
+            continue;
+        }
+        if c == flavor.string_literal.chars().next().expect("Flavor error") || c == '\'' || c == '"' {
+            string_delimiter = Some(c);
+            _current_token.push(c);
+            continue;
+        }
+        if c.is_whitespace() {
             if !(is_commented && flavor.end_comment.chars().next().expect("End comment cannot be empty.") == c) {
                 eval_current(&mut _current_token, &mut result, i, &mut is_commented);
                 continue;
@@ -157,13 +175,6 @@ pub fn tokenize(source: &String, flavor: &Flavor) -> Vec<(Token, Span)> {
                 continue;
             }
             
-        }
-        if c == flavor.string_literal.chars().next().expect("Flavor error") {
-            is_in_literal = !is_in_literal;
-        }
-        if is_in_literal {
-            _current_token.push(c);
-            continue
         }
         if c == flavor.line_end.chars().next().expect("Flavor error") {
             eval_current(&mut _current_token, &mut result, i, &mut is_commented);

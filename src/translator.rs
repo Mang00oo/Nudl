@@ -226,3 +226,31 @@ pub fn translate() {
             .status()
             .expect("Couldn't build Rust project.");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::defaults;
+
+    fn translate_source(source: &str, flavor: &Flavor) -> String {
+        let source = source.to_owned();
+        let tokens = lexer::tokenize(&source, flavor);
+        let tree = parser::generate_tree(&tokens, 0, &source);
+        generate_translated(&tree.0, 0).0
+    }
+
+    #[test]
+    fn print_with_apostrophe_translates_in_all_scopes() {
+        let mut flavor: Flavor = serde_json::from_str(defaults::flavor_file_default()).unwrap();
+        let source = r#"def inside() { print("you're"); }
+print("you're");
+if true { print("you're"); } else if false { print("you're"); }"#;
+
+        let translated = translate_source(source, &flavor);
+        assert_eq!(translated.matches("println!(\"you're\");").count(), 4);
+
+        flavor.string_literal = "'".to_owned();
+        let translated = translate_source(source, &flavor);
+        assert_eq!(translated.matches("println!(\"you're\");").count(), 4);
+    }
+}
